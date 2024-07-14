@@ -38,10 +38,12 @@ print(seq:Value(0.7)) --> 1, 0.4000000059604645, 0
 - Build function
 
 ``` lua
-.Bezier(t, points:{Vector3})
+.Bezier(points:{Vector3}, samplingRate)
 ```
 
 - Generate a Bezier curve
+
+Sampling rate defaults to 10
 
 ``` lua
 :GetValue(t)
