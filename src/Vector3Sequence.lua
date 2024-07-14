@@ -75,10 +75,11 @@ end
 
 function Vector3Sequence:GetValue(alpha:number, seed:number?)
     local p, q = 1, self.length;
+    local data = self.data;
 
     while p <= q do
         local m = math.floor( (p+q)/2 );
-        local _,_,_,mt = self:GetPoint(m)
+        local mt = data[(m-1)*5 + 4];
         if alpha >= mt then
             p = m+1;
         else
