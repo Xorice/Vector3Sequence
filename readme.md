@@ -1,6 +1,10 @@
 # Vector3 Sequence For Roblox
 
-Create Vector3 Sequence and get linear value
+Create **Vector3 Sequence** and calculate linear value
+
+![Image](test/GIF%202024-7-15%2014-50-42.gif)
+
+- you can make stupid things like this
 
 ## My Task
 
