@@ -53,6 +53,10 @@ while true do
 	timer += task.wait();
 	local seed = math.ceil(timer/2);
 	seed = nil; -- try to delete this line and see what would happen
+	
+	local x,y,z = math.noise(timer),math.noise(timer,5),math.noise(timer,10)
+	local unit = Vector3.new(x,y,z)
+	--unit = nil -- try to delete this
 
 	for i, part in parts do
 		local alpha = (timer/2 + (i-1)/len)%1
@@ -62,6 +66,6 @@ while true do
 		local vx = vl:Cross(vy);
 		
 		part.Size = seqs:Value(alpha)
-		part.CFrame = CFrame.fromMatrix(seq:Value(alpha, seed), vx,vy,-vl)
+		part.CFrame = CFrame.fromMatrix(seq:Value(alpha, seed, unit), vx,vy,-vl)
 	end
 end

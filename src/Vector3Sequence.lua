@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ]]
 
-local DEFAULT_BEZIER_SAMPLING = 10;
+local DEFAULT_BEZIER_SAMPLING = 16;
 
 local function mix(x0,y0,z0,x1,y1,z1,a)
 	return Vector3.new(
@@ -32,6 +32,17 @@ local function mix(x0,y0,z0,x1,y1,z1,a)
 	)
 end
 
+local function _random_array(seed)
+	math.randomseed(seed);
+	local x = math.random();
+	math.randomseed(seed+x*10)
+	local y = math.random();
+	math.randomseed(seed+y*10)
+	local z = math.random();
+
+	return Vector3.new(x,y,z)
+end
+
 local function BezierIterator(t, points): Vector3
 	local len = #points;
 
@@ -39,11 +50,26 @@ local function BezierIterator(t, points): Vector3
 	while len > 1 do
 		len -= 1;
 		for i = 1,len do
-			ans[i] = points[i]:Lerp(points[i+1], t);
+			local a,b = points[i],points[i+1]
+			ans[i] = a + (b-a)*t;
 		end
 		points = ans
 	end
 	return ans[1]
+end
+
+local function BezierTanIterator(t, points): Vector3
+	local len = #points;
+
+	local ans = {};
+	for _ = 1, len-2 do
+		len -= 1;
+		for i = 1,len do
+			ans[i] = points[i]:Lerp(points[i+1], t);
+		end
+		points = ans
+	end
+	return (ans[2] - ans[1]).Unit;
 end
 
 local Vector3Sequence = {};
@@ -83,14 +109,48 @@ function Vector3Sequence.Bezier(points, times)
 	self.length = times;
 
 	local data = table.create(times*5, 0)
-	for i = 0, times do
+	for i = 1, times do
 		local j = (i-1)*5 + 1;
-		local a = i/times;
+		local a = (i-1)/(times-1);
 		local v = BezierIterator(a, points);
 
 		data[j], data[j+1], data[j+2], data[j+3] = v.X, v.Y, v.Z, a;
 	end
 	self.data = data;
+	return setmetatable(self, Vector3Sequence);
+end
+
+function Vector3Sequence.BezierTan(points, times)
+	times = times or DEFAULT_BEZIER_SAMPLING;
+	local self = {}
+	self.length = times;
+
+	local data = table.create(times*5, 0)
+	for i = 1, times do
+		local j = (i-1)*5 + 1;
+		local a = (i-1)/(times-1);
+		local v = BezierTanIterator(a, points);
+
+		data[j], data[j+1], data[j+2], data[j+3] = v.X, v.Y, v.Z, a;
+	end
+	self.data = data;
+	return setmetatable(self, Vector3Sequence);
+end
+
+function Vector3Sequence.split(numberBuffer:{number})
+	local self = {};
+	local length = math.floor(#numberBuffer / 3);
+	local data = table.create(length*5, 0)
+
+	for i = 1, length do
+		local j = (i-1)*5+1;
+		local k = (i-1)*3+1;
+		data[j], data[j+1], data[j+2] = numberBuffer[k], numberBuffer[k+1], numberBuffer[k+2];
+		data[j+3] = (i - 1)/(length - 1);
+	end
+
+	self.data = data;
+	self.length = length;
 	return setmetatable(self, Vector3Sequence);
 end
 
@@ -100,7 +160,7 @@ function Vector3Sequence:GetPoint(index:number)
 	return data[i], data[i+1], data[i+2], data[i+3], data[i+4];
 end
 
-function Vector3Sequence:GetValue(alpha:number, seed:number?)
+function Vector3Sequence:GetValue(alpha:number, seed:number?, envlope:Vector3?)
 	local p, q = 1, self.length;
 	local data = self.data;
 
@@ -117,9 +177,35 @@ function Vector3Sequence:GetValue(alpha:number, seed:number?)
 	local x0,y0,z0,t0,e0 = self:GetPoint(p-1);
 	local x1,y1,z1,t1,e1 = self:GetPoint(p);
 	local a = (alpha-t0)/(t1-t0);
+	local em = (e0+(e1-e0)*a); -- * Envlope mix
 
-	return mix(x0,y0,z0,x1,y1,z1,a);
+	envlope = envlope and (envlope*em) or Vector3.zero;
+	if seed then
+		envlope = _random_array(seed)*2 - Vector3.one;
+		envlope = envlope * em;
+	end
+
+	return mix(x0,y0,z0,x1,y1,z1,a) + envlope;
 end
 Vector3Sequence.Value = Vector3Sequence.GetValue
+
+function Vector3Sequence:ApplyEnvlope(points)
+	local data = self.data
+	for i,v in points do
+		local j = (i-1)*5 + 1;
+		data[j+4] = points[i];
+	end
+end
+function Vector3Sequence:ApplyEnvlopeFromBezier(points)
+	local times = self.length;
+
+	local data = self.data
+	for i = 1, times do
+		local j = (i-1)*5 + 1;
+		local a = (i-1)/(times-1);
+		local v = BezierIterator(a, points);
+		data[j+4] = v;
+	end
+end
 
 return  Vector3Sequence;
