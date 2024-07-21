@@ -72,6 +72,28 @@ local function BezierTanIterator(t, points): Vector3
 	return (ans[2] - ans[1]).Unit;
 end
 
+local function BezierIteratorFull(t, buffer:{number}):Vector3
+	local len = math.ceil(#buffer / 4);
+
+	local ans = {};
+	while len > 1 do
+		len -= 1;
+		for i = 1, len do
+			local j = (i-1)*4+1;
+			local k = (i)*4+1;
+			local x0,y0,z0,w0 = buffer[j],buffer[j+1],buffer[j+2],buffer[j+3];
+			local x1,y1,z1,w1 = buffer[k],buffer[k+1],buffer[k+2],buffer[k+3];
+			ans[j],ans[j+1],ans[j+2],ans[j+3] =
+				x0 + (x1-x0) * t,
+				y0 + (y1-y0) * t,
+				z0 + (z1-z0) * t,
+				w0 + (w1-w0) * t
+		end
+		buffer = ans;
+	end
+	return ans[1],ans[2],ans[3],ans[4];
+end
+
 local Vector3Sequence = {};
 Vector3Sequence.__index = Vector3Sequence;
 
@@ -132,6 +154,23 @@ function Vector3Sequence.BezierTan(points, times)
 		local v = BezierTanIterator(a, points);
 
 		data[j], data[j+1], data[j+2], data[j+3] = v.X, v.Y, v.Z, a;
+	end
+	self.data = data;
+	return setmetatable(self, Vector3Sequence);
+end
+
+function Vector3Sequence.BezierFull(buffer, times)
+	times = times or DEFAULT_BEZIER_SAMPLING;
+	local self = {};
+	self.length = times;
+
+	local data = table.create(times*5, 0);
+	for i = 1, times do
+		local j = (i-1)*5 + 1;
+		local a = (i-1)/(times-1);
+		local x,y,z,w = BezierIteratorFull(a, buffer);
+
+		data[j],data[j+1],data[j+2],data[j+3] = x,y,z,w;
 	end
 	self.data = data;
 	return setmetatable(self, Vector3Sequence);
