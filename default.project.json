@@ -1,0 +1,4 @@
+{
+  "name": "Vector3Sequence",
+  "tree": { "$path": "src/Vector3Sequence.lua" }
+}
